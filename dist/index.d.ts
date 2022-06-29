@@ -1,10 +1,10 @@
 /// <reference types="react" />
-import react, { ErrorInfo } from 'react';
 import { JsonRpcProvider } from '@ethersproject/providers';
 import { TokenInfo } from '@uniswap/token-lists';
 export { TokenInfo } from '@uniswap/token-lists';
 import { Provider } from '@web3-react/types';
 export { Provider as Eip1193Provider } from '@web3-react/types';
+import react, { ErrorInfo } from 'react';
 export { Provider as EthersProvider } from '@ethersproject/abstract-provider';
 
 interface FeeOptions {
@@ -34,13 +34,13 @@ interface SwapField {
 }
 interface SwapProps extends TokenDefaults, FeeOptions {
     chainId: number;
-    children: JSX.Element | JSX.Element[] | null;
+    children: JSX.Element;
 }
 
 declare type ErrorHandler = (error: Error, info: ErrorInfo) => void;
 
 declare type WrapperProps = {
-    accounts: string[];
+    accounts?: string[];
     provider?: Provider | JsonRpcProvider;
     jsonRpcEndpoint?: string | JsonRpcProvider;
     tokenList?: string | TokenInfo[];
@@ -135,19 +135,15 @@ declare const defaultTheme: {
 };
 
 interface Values {
-    uniswap: {
-        values?: any;
-        input?: SwapField;
-        output?: SwapField;
-    };
+    uniswap?: any;
+    input?: SwapField;
+    output?: SwapField;
 }
 interface Action extends Values {
     type: 'setUniswapValues' | 'setUniswapInput' | 'setUniswapOutput';
 }
 declare type Dispatch = react.Dispatch<Values>;
-declare type SwapWidgetProps = SwapProps & WrapperProps & {
-    children?: JSX.Element | JSX.Element[] | null;
-};
+declare type SwapWidgetProps = SwapProps & WrapperProps;
 declare const SwapValuesProvider: (props: SwapWidgetProps) => JSX.Element;
 declare const useDispatchSwapValues: () => (a: Action) => void;
 declare function useSwapValues(): Values;

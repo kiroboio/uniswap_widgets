@@ -4,62 +4,94 @@ import useSyncTokenDefaults, { TokenDefaults } from 'hooks/swap/useSyncTokenDefa
 import useActiveWeb3React from 'hooks/useActiveWeb3React'
 import useOnSupportedNetwork from 'hooks/useOnSupportedNetwork'
 
-import useInput from './useInput'
+import SwapWrapper from './SwapWrapper'
 import useValidate from './useValidate'
-import { Currency, Token } from '@uniswap/sdk-core'
-import { useEffect, useState } from 'react'
-import { useDispatchSwapValues, useSwapValues } from '../../'
-
 
 export interface SwapToken {
-  address: string,
-  decimals: number,
+  address: string
+  decimals: number
 }
 
 export interface SwapField {
-  amount?: string;
-  currency?: SwapToken;
+  amount?: string
+  currency?: SwapToken
 }
 export interface SwapProps extends TokenDefaults, FeeOptions {
-  chainId: number;
-  children: JSX.Element | JSX.Element[] | null
+  chainId: number
+  children: JSX.Element
 }
+
+// const getSwapValuesTest = () => (
+//   <>
+//     <button
+//       onClick={() => {
+//         dispatchSwapValues({
+//           type: 'setUniswapInput',
+//           input: {
+//             amount: Math.random().toString(),
+//             currency: {
+//               address: '0xb678e95f83af08e7598ec21533f7585e83272799',
+//               decimals: 18,
+//             },
+//           },
+//         })
+
+//         dispatchSwapValues({
+//           type: 'setUniswapOutput',
+//           output: {
+//             currency: {
+//               address: '0x1f9840a85d5af5bf1d1762f925bdaddc4201f984',
+//               decimals: 18,
+//             },
+//           },
+//         })
+//       }}
+//     >
+//       test swap
+//     </button>
+//     <button
+//       onClick={() => {
+//         dispatchSwapValues({
+//           type: 'setUniswapInput',
+//           input: {
+//             currency: {
+//               address: '0xb678e95f83af08e7598ec21533f7585e83272799',
+//               decimals: 18,
+//             },
+//           },
+//         })
+
+//         dispatchSwapValues({
+//           type: 'setUniswapOutput',
+//           output: {
+//             amount: Math.random().toString(),
+//             currency: {
+//               address: '0x1f9840a85d5af5bf1d1762f925bdaddc4201f984',
+//               decimals: 18,
+//             },
+//           },
+//         })
+//       }}
+//     >
+//       test swap output
+//     </button>
+//   </>
+// )
 
 export default function Swap(props: SwapProps) {
   useValidate(props)
   useSyncConvenienceFee(props)
   useSyncTokenDefaults(props)
-  
-  const dispatchSwapValues = useDispatchSwapValues()
-  const { uniswap: { input, output }} = useSwapValues();
 
-  const {  chainId } = props;
-  
+  const { chainId } = props
+
   const { active } = useActiveWeb3React()
   const onSupportedNetwork = useOnSupportedNetwork()
   const isDisabled = !(active && onSupportedNetwork)
-  const [inputCurrency, setInputCurrency] = useState<Currency | undefined>();
-  const [outputCurrency, setOutputCurrency] = useState<Currency | undefined>();
 
-  useEffect(() => {
-    if (!input?.currency?.address) return;
-    setInputCurrency(new Token(chainId, input.currency.address, input.currency.decimals))
-  }, [input?.currency?.address])
-
-  useEffect(() => {
-    if (!output?.currency?.address) return;
-    setOutputCurrency(new Token(chainId, output.currency.address, output.currency.decimals))
-  }, [output?.currency?.address])
-
-  useEffect(() => {
-    const swapInput = useInput({ input: { disabled: isDisabled, amount: input?.amount, currency: inputCurrency }, output: { disabled: isDisabled, amount: output?.amount, currency: outputCurrency } })
-  
-    dispatchSwapValues({ uniswap: { values: swapInput }, type: 'setUniswapValues' })
-  }, [input, output])
   return (
     <SwapInfoProvider disabled={isDisabled}>
-      {props.children}
+      <SwapWrapper chainId={chainId}>{props.children}</SwapWrapper>
     </SwapInfoProvider>
-
   )
 }

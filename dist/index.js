@@ -40,8 +40,9 @@ import { parseBytes32String } from '@ethersproject/strings';
 import CID from 'cids';
 import { getNameFromData, rmPrefix } from 'multicodec';
 import { decode, toB58String } from 'multihashes';
-import _wrapNativeSuper from '@babel/runtime/helpers/wrapNativeSuper';
+import { ethers } from 'ethers';
 import _assertThisInitialized from '@babel/runtime/helpers/assertThisInitialized';
+import _wrapNativeSuper from '@babel/runtime/helpers/wrapNativeSuper';
 import { Provider } from 'react-redux';
 import _styled, { css, keyframes, useTheme, ThemeProvider as ThemeProvider$1 } from 'styled-components';
 import 'wicg-inert';
@@ -6853,10 +6854,6 @@ function useIsSwapFieldIndependent(field) {
   return independentField === field;
 }
 var amountAtom = pickAtom(swapAtom, 'amount'); // check if any amount has been entered by user
-
-function useIsAmountPopulated() {
-  return Boolean(useAtomValue(amountAtom));
-}
 function useSwapAmount(field) {
   var amount = useAtomValue(amountAtom);
   var isFieldIndependent = useIsSwapFieldIndependent(field);
@@ -6870,133 +6867,104 @@ function useSwapAmount(field) {
   }, [field, updateSwap]);
   return [value, updateAmount];
 }
-function useSwapCurrencyAmount(field) {
-  var isFieldIndependent = useIsSwapFieldIndependent(field);
-  var isAmountPopulated = useIsAmountPopulated();
-
-  var _useSwapAmount = useSwapAmount(field),
-      _useSwapAmount2 = _slicedToArray(_useSwapAmount, 1),
-      swapAmount = _useSwapAmount2[0];
-
-  var _useSwapCurrency = useSwapCurrency(field),
-      _useSwapCurrency2 = _slicedToArray(_useSwapCurrency, 1),
-      swapCurrency = _useSwapCurrency2[0];
-
-  var currencyAmount = useMemo(function () {
-    return tryParseCurrencyAmount(swapAmount, swapCurrency);
-  }, [swapAmount, swapCurrency]);
-
-  if (isFieldIndependent && isAmountPopulated) {
-    return currencyAmount;
-  }
-
-  return;
-}
-
-var MIN_NATIVE_CURRENCY_FOR_GAS = JSBI.exponentiate(JSBI.BigInt(10), JSBI.BigInt(16)); // .01 ETH
 
 /**
- * Given some token amount, return the max that can be spent of it
- * @param currencyAmount to return max of
+ * Use this hook to mutate the .current value instead of creating new
+ *
+ * Two use cases
+ *
+ * 1) For not adding state to hook deps
+ * 2) For getting updated(mutated) state version in async operations
  */
 
-function maxAmountSpend(currencyAmount) {
-  if (!currencyAmount) return undefined;
+var useCurrentMutableState = function useCurrentMutableState(state) {
+  var ref = useRef(state);
+  useEffect(function () {
+    ref.current = state;
+  }, [state]);
+  return ref;
+};
 
-  if (currencyAmount.currency.isNative) {
-    if (JSBI.greaterThan(currencyAmount.quotient, MIN_NATIVE_CURRENCY_FOR_GAS)) {
-      return CurrencyAmount.fromRawAmount(currencyAmount.currency, JSBI.subtract(currencyAmount.quotient, MIN_NATIVE_CURRENCY_FOR_GAS));
-    } else {
-      return CurrencyAmount.fromRawAmount(currencyAmount.currency, JSBI.BigInt(0));
-    }
-  }
+function SwapWrapper(_ref) {
+  var _input$currency2, _input$currency3, _output$currency2, _output$currency3;
 
-  return currencyAmount;
-}
-
-function useFormattedFieldAmount(_ref) {
-  var disabled = _ref.disabled,
-      currencyAmount = _ref.currencyAmount,
-      fieldAmount = _ref.fieldAmount;
-  return useMemo(function () {
-    if (disabled) {
-      return '';
-    }
-
-    if (fieldAmount !== undefined) {
-      return fieldAmount;
-    }
-
-    if (currencyAmount) {
-      return currencyAmount.toSignificant(6);
-    }
-
-    return '';
-  }, [disabled, currencyAmount, fieldAmount]);
-}
-function useInput(_ref2) {
-  var input = _ref2.input,
-      output = _ref2.output;
+  var chainId = _ref.chainId,
+      children = _ref.children;
   var swapInfo = useSwapInfo();
-  var _swapInfo$Field$INPUT = swapInfo[Field.INPUT],
-      balance = _swapInfo$Field$INPUT.balance,
-      tradeCurrencyAmount = _swapInfo$Field$INPUT.amount,
-      tradeState = swapInfo.trade.state;
+
+  var _useSwapValues = useSwapValues(),
+      input = _useSwapValues.input,
+      output = _useSwapValues.output;
 
   var _useSwapAmount = useSwapAmount(Field.INPUT),
       _useSwapAmount2 = _slicedToArray(_useSwapAmount, 2),
-      inputAmount = _useSwapAmount2[0],
       updateInputAmount = _useSwapAmount2[1];
 
   var _useSwapCurrency = useSwapCurrency(Field.INPUT),
-      _useSwapCurrency2 = _slicedToArray(_useSwapCurrency, 2);
-      _useSwapCurrency2[0];
-      var updateInputCurrency = _useSwapCurrency2[1];
+      _useSwapCurrency2 = _slicedToArray(_useSwapCurrency, 2),
+      updateInputCurrency = _useSwapCurrency2[1];
 
   var _useSwapAmount3 = useSwapAmount(Field.OUTPUT),
       _useSwapAmount4 = _slicedToArray(_useSwapAmount3, 2),
-      outputAmount = _useSwapAmount4[0],
       updateSwapOutputAmount = _useSwapAmount4[1];
 
   var _useSwapCurrency3 = useSwapCurrency(Field.OUTPUT),
-      _useSwapCurrency4 = _slicedToArray(_useSwapCurrency3, 2);
-      _useSwapCurrency4[0];
-      var updateSwapOutputCurrency = _useSwapCurrency4[1];
+      _useSwapCurrency4 = _slicedToArray(_useSwapCurrency3, 2),
+      updateSwapOutputCurrency = _useSwapCurrency4[1];
 
-  var inputCurrencyAmount = useSwapCurrencyAmount(Field.INPUT);
+  var _updateInputAmount = useCurrentMutableState(updateInputAmount);
+
+  var _updateInputCurrency = useCurrentMutableState(updateInputCurrency);
+
+  var _updateSwapOutputAmount = useCurrentMutableState(updateSwapOutputAmount);
+
+  var _updateSwapOutputCurrency = useCurrentMutableState(updateSwapOutputCurrency);
+
   useEffect(function () {
-    if (!input.amount) return;
-    if (!input.currency) return;
-    updateInputAmount(input.amount);
-    updateInputCurrency(input.currency);
-  }, [input.amount, input.currency]);
+    if (!(input !== null && input !== void 0 && input.amount)) return;
+
+    _updateInputAmount.current(input.amount);
+  }, [input === null || input === void 0 ? void 0 : input.amount]);
   useEffect(function () {
-    if (!output.amount) return;
-    if (!output.currency) return;
-    updateSwapOutputAmount(output.amount);
-    updateSwapOutputCurrency(output.currency);
-  }, [output.amount, output.currency]);
-  var isRouteLoading = input.disabled || tradeState === TradeState.SYNCING || tradeState === TradeState.LOADING;
-  var isDependentField = !useIsSwapFieldIndependent(Field.INPUT);
-  var isLoading = isRouteLoading && isDependentField;
-  var max = useMemo(function () {
-    var maxAmount = maxAmountSpend(balance);
-    return maxAmount !== null && maxAmount !== void 0 && maxAmount.greaterThan(0) ? maxAmount.toExact() : undefined;
-  }, [balance]);
-  var formattedInputAmount = useFormattedFieldAmount({
-    disabled: input.disabled,
-    currencyAmount: tradeCurrencyAmount,
-    fieldAmount: inputAmount
-  });
-  return {
-    swapInfo: swapInfo,
-    inputAmount: formattedInputAmount,
-    output: output,
-    max: max,
-    isLoading: isLoading,
-    inputCurrencyAmount: inputCurrencyAmount,
-    outputAmount: outputAmount
-  };
+    var _input$currency;
+
+    if (!(input !== null && input !== void 0 && (_input$currency = input.currency) !== null && _input$currency !== void 0 && _input$currency.address)) return;
+    var newInputToken = new Token(chainId, input.currency.address, input.currency.decimals);
+
+    _updateInputCurrency.current(newInputToken);
+  }, [input === null || input === void 0 ? void 0 : (_input$currency2 = input.currency) === null || _input$currency2 === void 0 ? void 0 : _input$currency2.address, chainId, input === null || input === void 0 ? void 0 : (_input$currency3 = input.currency) === null || _input$currency3 === void 0 ? void 0 : _input$currency3.decimals]);
+  useEffect(function () {
+    if (!(output !== null && output !== void 0 && output.amount)) return;
+
+    _updateSwapOutputAmount.current(output.amount);
+  }, [output === null || output === void 0 ? void 0 : output.amount]);
+  useEffect(function () {
+    var _output$currency;
+
+    if (!(output !== null && output !== void 0 && (_output$currency = output.currency) !== null && _output$currency !== void 0 && _output$currency.address)) return;
+
+    _updateSwapOutputCurrency.current(new Token(chainId, output.currency.address, output.currency.decimals));
+  }, [output === null || output === void 0 ? void 0 : (_output$currency2 = output.currency) === null || _output$currency2 === void 0 ? void 0 : _output$currency2.address, chainId, output === null || output === void 0 ? void 0 : (_output$currency3 = output.currency) === null || _output$currency3 === void 0 ? void 0 : _output$currency3.decimals]);
+  var dispatchSwapValues = useDispatchSwapValues();
+
+  var _dispatchSwapValues = useCurrentMutableState(dispatchSwapValues);
+
+  var _swapInfo = useCurrentMutableState(swapInfo);
+
+  useEffect(function () {
+    var _swapInfo$current$INP, _swapInfo$current$OUT;
+
+    _dispatchSwapValues.current({
+      uniswap: {
+        swapInfo: _swapInfo.current,
+        inputAmountFormatted: (_swapInfo$current$INP = _swapInfo.current.INPUT.amount) === null || _swapInfo$current$INP === void 0 ? void 0 : _swapInfo$current$INP.toSignificant(6),
+        outputAmountFormatted: (_swapInfo$current$OUT = _swapInfo.current.OUTPUT.amount) === null || _swapInfo$current$OUT === void 0 ? void 0 : _swapInfo$current$OUT.toSignificant(6),
+        isLoading: _swapInfo.current.trade.state === 0
+      },
+      type: 'setUniswapValues'
+    });
+  }, [swapInfo.trade.state]);
+  return children;
 }
 
 function _createSuper$2(Derived) { var hasNativeReflectConstruct = _isNativeReflectConstruct$2(); return function _createSuperInternal() { var Super = _getPrototypeOf(Derived), result; if (hasNativeReflectConstruct) { var NewTarget = _getPrototypeOf(this).constructor; result = Reflect.construct(Super, arguments, NewTarget); } else { result = Super.apply(this, arguments); } return _possibleConstructorReturn(this, result); }; }
@@ -7090,19 +7058,64 @@ function useValidate(props) {
   }, [defaultInputTokenAddress, defaultOutputTokenAddress]);
 }
 
+// const getSwapValuesTest = () => (
+//   <>
+//     <button
+//       onClick={() => {
+//         dispatchSwapValues({
+//           type: 'setUniswapInput',
+//           input: {
+//             amount: Math.random().toString(),
+//             currency: {
+//               address: '0xb678e95f83af08e7598ec21533f7585e83272799',
+//               decimals: 18,
+//             },
+//           },
+//         })
+//         dispatchSwapValues({
+//           type: 'setUniswapOutput',
+//           output: {
+//             currency: {
+//               address: '0x1f9840a85d5af5bf1d1762f925bdaddc4201f984',
+//               decimals: 18,
+//             },
+//           },
+//         })
+//       }}
+//     >
+//       test swap
+//     </button>
+//     <button
+//       onClick={() => {
+//         dispatchSwapValues({
+//           type: 'setUniswapInput',
+//           input: {
+//             currency: {
+//               address: '0xb678e95f83af08e7598ec21533f7585e83272799',
+//               decimals: 18,
+//             },
+//           },
+//         })
+//         dispatchSwapValues({
+//           type: 'setUniswapOutput',
+//           output: {
+//             amount: Math.random().toString(),
+//             currency: {
+//               address: '0x1f9840a85d5af5bf1d1762f925bdaddc4201f984',
+//               decimals: 18,
+//             },
+//           },
+//         })
+//       }}
+//     >
+//       test swap output
+//     </button>
+//   </>
+// )
 function Swap(props) {
-  var _input$currency2, _output$currency2;
-
   useValidate(props);
   useSyncConvenienceFee(props);
   useSyncTokenDefaults(props);
-  var dispatchSwapValues = useDispatchSwapValues();
-
-  var _useSwapValues = useSwapValues(),
-      _useSwapValues$uniswa = _useSwapValues.uniswap,
-      input = _useSwapValues$uniswa.input,
-      output = _useSwapValues$uniswa.output;
-
   var chainId = props.chainId;
 
   var _useActiveWeb3React = useActiveWeb3React(),
@@ -7110,52 +7123,11 @@ function Swap(props) {
 
   var onSupportedNetwork = useOnSupportedNetwork();
   var isDisabled = !(active && onSupportedNetwork);
-
-  var _useState = useState(),
-      _useState2 = _slicedToArray(_useState, 2),
-      inputCurrency = _useState2[0],
-      setInputCurrency = _useState2[1];
-
-  var _useState3 = useState(),
-      _useState4 = _slicedToArray(_useState3, 2),
-      outputCurrency = _useState4[0],
-      setOutputCurrency = _useState4[1];
-
-  useEffect(function () {
-    var _input$currency;
-
-    if (!(input !== null && input !== void 0 && (_input$currency = input.currency) !== null && _input$currency !== void 0 && _input$currency.address)) return;
-    setInputCurrency(new Token(chainId, input.currency.address, input.currency.decimals));
-  }, [input === null || input === void 0 ? void 0 : (_input$currency2 = input.currency) === null || _input$currency2 === void 0 ? void 0 : _input$currency2.address]);
-  useEffect(function () {
-    var _output$currency;
-
-    if (!(output !== null && output !== void 0 && (_output$currency = output.currency) !== null && _output$currency !== void 0 && _output$currency.address)) return;
-    setOutputCurrency(new Token(chainId, output.currency.address, output.currency.decimals));
-  }, [output === null || output === void 0 ? void 0 : (_output$currency2 = output.currency) === null || _output$currency2 === void 0 ? void 0 : _output$currency2.address]);
-  useEffect(function () {
-    var swapInput = useInput({
-      input: {
-        disabled: isDisabled,
-        amount: input === null || input === void 0 ? void 0 : input.amount,
-        currency: inputCurrency
-      },
-      output: {
-        disabled: isDisabled,
-        amount: output === null || output === void 0 ? void 0 : output.amount,
-        currency: outputCurrency
-      }
-    });
-    dispatchSwapValues({
-      uniswap: {
-        values: swapInput
-      },
-      type: 'setUniswapValues'
-    });
-  }, [input, output]);
   return /*#__PURE__*/React.createElement(SwapInfoProvider, {
     disabled: isDisabled
-  }, props.children);
+  }, /*#__PURE__*/React.createElement(SwapWrapper, {
+    chainId: chainId
+  }, props.children));
 }
 
 var TransactionType;
@@ -9075,17 +9047,23 @@ var ErrorBoundary = /*#__PURE__*/function (_Component) {
   return ErrorBoundary;
 }(Component);
 
-// const getCustomProvider = () => {
-//   const provider = new ethers.providers.JsonRpcProvider('https://rinkeby.infura.io/v3/14c73ecdbcaa464585aa7c438fdf6a77')
-//   const jsonRpcEndpoint = 'https://rinkeby.infura.io/v3/14c73ecdbcaa464585aa7c438fdf6a77'
-//   return { provider, jsonRpcEndpoint }
-// }
+var getCustomProvider = function getCustomProvider() {
+  var provider = new ethers.providers.JsonRpcProvider('https://rinkeby.infura.io/v3/14c73ecdbcaa464585aa7c438fdf6a77');
+  var jsonRpcEndpoint = 'https://rinkeby.infura.io/v3/14c73ecdbcaa464585aa7c438fdf6a77';
+  return {
+    provider: provider,
+    jsonRpcEndpoint: jsonRpcEndpoint
+  };
+};
+
 function Wrapper(props) {
   var children = props.children,
-      provider = props.provider,
-      jsonRpcEndpoint = props.jsonRpcEndpoint,
-      accounts = props.accounts,
       onError = props.onError;
+
+  var _getCustomProvider = getCustomProvider(),
+      provider = _getCustomProvider.provider,
+      jsonRpcEndpoint = _getCustomProvider.jsonRpcEndpoint;
+
   return /*#__PURE__*/React.createElement(StrictMode, null, /*#__PURE__*/React.createElement(ErrorBoundary, {
     onError: onError
   }, /*#__PURE__*/React.createElement(Provider, {
@@ -9093,7 +9071,7 @@ function Wrapper(props) {
   }, /*#__PURE__*/React.createElement(Provider$1, null, /*#__PURE__*/React.createElement(ActiveWeb3Provider, {
     provider: provider,
     jsonRpcEndpoint: jsonRpcEndpoint,
-    accounts: accounts
+    accounts: ['0xf08fD75cCed9Eb65cff7451291Bf41e91c8457eD']
   }, /*#__PURE__*/React.createElement(BlockNumberProvider, null, /*#__PURE__*/React.createElement(MulticallUpdater, null), /*#__PURE__*/React.createElement(TransactionsUpdater, null), /*#__PURE__*/React.createElement(TokenListProvider, {
     list: props.tokenList
   }, children)))))));
@@ -9110,28 +9088,20 @@ function ownKeys(object, enumerableOnly) { var keys = Object.keys(object); if (O
 function _objectSpread(target) { for (var i = 1; i < arguments.length; i++) { var source = null != arguments[i] ? arguments[i] : {}; i % 2 ? ownKeys(Object(source), !0).forEach(function (key) { _defineProperty(target, key, source[key]); }) : Object.getOwnPropertyDescriptors ? Object.defineProperties(target, Object.getOwnPropertyDescriptors(source)) : ownKeys(Object(source)).forEach(function (key) { Object.defineProperty(target, key, Object.getOwnPropertyDescriptor(source, key)); }); } return target; }
 
 var reducer = function reducer(state, action) {
-  var _action$uniswap, _action$uniswap2, _action$uniswap3;
-
   switch (action.type) {
     case 'setUniswapValues':
       return _objectSpread(_objectSpread({}, state), {}, {
-        uniswap: _objectSpread(_objectSpread({}, action === null || action === void 0 ? void 0 : action.uniswap), {}, {
-          values: (_action$uniswap = action.uniswap) === null || _action$uniswap === void 0 ? void 0 : _action$uniswap.values
-        })
+        values: action === null || action === void 0 ? void 0 : action.uniswap
       });
 
     case 'setUniswapInput':
       return _objectSpread(_objectSpread({}, state), {}, {
-        uniswap: _objectSpread(_objectSpread({}, action === null || action === void 0 ? void 0 : action.uniswap), {}, {
-          input: (_action$uniswap2 = action.uniswap) === null || _action$uniswap2 === void 0 ? void 0 : _action$uniswap2.input
-        })
+        input: action === null || action === void 0 ? void 0 : action.input
       });
 
     case 'setUniswapOutput':
       return _objectSpread(_objectSpread({}, state), {}, {
-        uniswap: _objectSpread(_objectSpread({}, action === null || action === void 0 ? void 0 : action.uniswap), {}, {
-          output: (_action$uniswap3 = action.uniswap) === null || _action$uniswap3 === void 0 ? void 0 : _action$uniswap3.output
-        })
+        output: action === null || action === void 0 ? void 0 : action.output
       });
 
     default:
@@ -9140,9 +9110,7 @@ var reducer = function reducer(state, action) {
 };
 
 var DispatchSwapValues = /*#__PURE__*/React.createContext(undefined);
-var initValues = {
-  uniswap: {}
-};
+var initValues = {};
 var SwapValuesContext = /*#__PURE__*/React.createContext(initValues);
 var SwapValuesProvider = function SwapValuesProvider(props) {
   var _useReducer = useReducer(reducer, initValues),
@@ -9153,6 +9121,9 @@ var SwapValuesProvider = function SwapValuesProvider(props) {
   var children = props.children,
       rest = _objectWithoutProperties(props, _excluded);
 
+  console.log({
+    values: values
+  });
   return /*#__PURE__*/React.createElement(SwapValuesContext.Provider, {
     value: values
   }, /*#__PURE__*/React.createElement(DispatchSwapValues.Provider, {

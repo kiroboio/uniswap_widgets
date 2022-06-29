@@ -7,7 +7,7 @@ import {
   lightTheme,
   SUPPORTED_LOCALES,
   SupportedChainId,
-  SwapWidget,
+  SwapValuesProvider,
 } from '@uniswap/widgets'
 import { useEffect } from 'react'
 import { useValue } from 'react-cosmos/fixture'
@@ -58,20 +58,21 @@ function Fixture() {
   console.log(tokenList)
 
   return (
-    <SwapWidget
+    <SwapValuesProvider
       convenienceFee={convenienceFee}
       convenienceFeeRecipient={convenienceFeeRecipient}
       defaultInputTokenAddress={defaultInputToken}
       defaultInputAmount={defaultInputAmount}
       defaultOutputTokenAddress={defaultOutputToken}
       defaultOutputAmount={defaultOutputAmount}
-      locale={locale}
+      chainId={4}
+      //locale={locale}
       jsonRpcEndpoint={jsonRpcEndpoint}
       provider={connector}
-      theme={theme}
+      //theme={theme}
       tokenList={tokenList}
-      width={width}
-      onConnectWallet={() => console.log('onConnectWallet')} // this handler is included as a test of functionality, but only logs
+      //width={width}
+      //onConnectWallet={() => console.log('onConnectWallet')} // this handler is included as a test of functionality, but only logs
     />
   )
 }
